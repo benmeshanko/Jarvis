@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
@@ -8,5 +8,15 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<PackageReference Include="FuzzySharp" Version="2.0.2" />
+	<PackageReference Include="LibVLCSharp" Version="3.10.2" />
+	<PackageReference Include="PortAudioSharp2" Version="1.0.6" />
+	<PackageReference Include="TagLibSharp" Version="2.3.0" />
+	<PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.24" />
+	<PackageReference Include="Whisper.net" Version="1.9.1" />
+	<PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
   </ItemGroup>
 </Project>
