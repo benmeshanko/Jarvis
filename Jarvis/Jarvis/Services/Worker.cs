@@ -42,7 +42,7 @@ public class Worker(
         await DownloadWhisperModel(vadModel, true);
         using var vadFactory = WhisperVadFactory.FromPath(vadModel);
 
-        using var listener = new VoiceListener(factory, vadFactory, "Jarvis.");
+        using var listener = new VoiceListener(logger, factory, vadFactory, "Jarvis.");
         using var cts = new CancellationTokenSource();
         var listening = listener.RunAsync(command => Handle(command, cts), cts.Token);
 
@@ -83,7 +83,7 @@ public class Worker(
 
     void Handle(string command, CancellationTokenSource cts)
     {
-        Console.WriteLine($"[Command] {command}");
+        logger.LogInformation($"[Command] {command}");
         command = Regex.Replace(command, @"[^\w\s']", " ").Trim();
         var words = command.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
         var action = words.Length > 0 ? Aliases.GetValueOrDefault(words[0]) : null;
@@ -103,12 +103,12 @@ public class Worker(
                 break;
             case "shuffle":
                 Target? musicTarget = libraryService.Find(target);
-                if (musicTarget is null) { Console.WriteLine("[Match] nothing close enough"); break; }
+                if (musicTarget is null) { logger.LogInformation("[Match] nothing close enough"); break; }
                 mediaService.PlayList(libraryService.Songs(musicTarget, true));
                 break;
             case "play":
                 musicTarget = libraryService.Find(target);
-                if (musicTarget is null) { Console.WriteLine("[Match] nothing close enough"); break; }
+                if (musicTarget is null) { logger.LogInformation("[Match] nothing close enough"); break; }
                 mediaService.PlayList(libraryService.Songs(musicTarget, false));
                 break;
             case "volume":

@@ -19,9 +19,11 @@ public class VoiceListener : IDisposable
     readonly WhisperVadProcessor _vad;
     readonly List<float> _recent = [];
     static readonly Regex Wake = new(@"\b(?:jarvis|jervis|travis)\b[\s,.!?]*(.*)", RegexOptions.IgnoreCase);
+    readonly ILogger<Worker> _logger;
 
-    public VoiceListener(WhisperFactory factory, WhisperVadFactory vadFactory, string prompt)
+    public VoiceListener(ILogger<Worker> logger, WhisperFactory factory, WhisperVadFactory vadFactory, string prompt)
     {
+        _logger = logger;
         _processor = factory.CreateBuilder()
             .WithLanguage("en")
             .WithPrompt(prompt)
@@ -112,7 +114,7 @@ public class VoiceListener : IDisposable
 
                         sw.Stop();
 
-                        Console.WriteLine($"[Heard] {text}. Processed in {sw.ElapsedMilliseconds}ms");
+                        _logger.LogInformation($"[Heard] {text}. Processed in {sw.ElapsedMilliseconds}ms");
 
                         var m = Wake.Match(text.ToString());
                         if (m.Success) onCommand(m.Groups[1].Value.Trim());

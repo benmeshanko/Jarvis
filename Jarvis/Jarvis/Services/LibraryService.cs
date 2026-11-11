@@ -1,41 +1,35 @@
 ﻿using FuzzySharp;
 using Microsoft.Extensions.Options;
-using System.Diagnostics;
 
 namespace Jarvis.Services;
 
-public record Target(string Display, string Key, string Path, bool IsSong);
+public enum TargetType { Artist, Album, Song }
+public record Target(string Display, string Key, string Path, TargetType TargetType);
 
 /// <summary>
 /// Singleton service, manages music library
 /// </summary>
 public class LibraryService
 {
-    const int MinScore = 45;
-    static readonly EnumerationOptions Dirs = new() { IgnoreInaccessible = true };
-    static readonly EnumerationOptions Mp3s = new() { RecurseSubdirectories = true, IgnoreInaccessible = true };
-
     readonly List<Target> _targets = [];
-    public IReadOnlyList<string> ArtistNames { get; }
-    private readonly MediaService _mediaService;
-    public LibraryService(IOptions<AppSettings> settings, MediaService mediaService)
+    public LibraryService(IOptions<AppSettings> settings)
     {
-        _mediaService = mediaService;
-        string rootDirectory = settings.Value.RootDirectory;
-        var artists = Directory.GetDirectories(rootDirectory, "*", Dirs);
-        ArtistNames = artists.Select(a => Path.GetFileName(a)!).ToList();
+        EnumerationOptions options = new() { IgnoreInaccessible = true };
 
-        // Artists first, so on a tie "Led Zeppelin" the artist beats the self-titled album
-        foreach (var artist in artists)
+        // Note - has implicit artist/album/song structure
+        string rootDirectory = settings.Value.RootDirectory;
+        foreach (string artistPath in Directory.GetDirectories(rootDirectory, "*", options))
         {
-            _targets.Add(new(Path.GetFileName(artist)!, Normalize(Path.GetFileName(artist)!), artist, false));
-            foreach (var album in Directory.GetDirectories(artist, "*", Dirs))
+            string artistName = Path.GetFileName(artistPath);
+            _targets.Add(new(artistName, Normalize(artistName), artistPath, TargetType.Artist));
+            foreach (var albumPath in Directory.GetDirectories(artistPath, "*", options))
             {
-                _targets.Add(new($"{Path.GetFileName(artist)} – {Path.GetFileName(album)}", Normalize(Path.GetFileName(album)!), album, false));
-                foreach (var song in Directory.GetFiles(album, "*.mp3", Mp3s))
+                string albumName = Path.GetFileName(albumPath);
+                _targets.Add(new($"{artistName} – {albumName}", Normalize(albumName), albumPath, TargetType.Album));
+                foreach (var songPath in Directory.GetFiles(albumPath, "*.mp3", options))
                 {
-                    string songName = Path.GetFileName(Normalize(song));
-                    _targets.Add(new(songName, songName, song, true));
+                    string songName = Path.GetFileName(Normalize(songPath));
+                    _targets.Add(new(songName, songName, songPath, TargetType.Song));
                 }
             }
         }
@@ -51,40 +45,32 @@ public class LibraryService
 
     public Target? Find(string query)
     {
-        Stopwatch sw = Stopwatch.StartNew();
-        var q = Normalize(query);
+        const int MIN_SCORE = 45;
+        string normalized = Normalize(query);
         var best = _targets
-            .Select(t => (t, Set: Fuzz.TokenSetRatio(q, t.Key), Ratio: Fuzz.Ratio(q, t.Key)))
+            .Select(t => (t, Set: Fuzz.TokenSetRatio(normalized, t.Key), Ratio: Fuzz.Ratio(normalized, t.Key)))
             .OrderByDescending(x => x.Set)
             .ThenByDescending(x => x.Ratio)
             .First();
-
-        sw.Stop();
-        Console.WriteLine($"[Match] '{query}' -> {best.t.Display} ({best.Set}/{best.Ratio}) in {sw.ElapsedMilliseconds}ms");
-        return best.Set >= MinScore ? best.t : null;
+        return best.Set >= MIN_SCORE ? best.t : null;
     }
 
-    public List<string> Songs(Target t, bool shuffle)
+    public List<string> Songs(Target target, bool shuffle)
     {
-        string[] files;
-        if (t.IsSong)
-        {
-            files = [t.Path];
-        }
-        else
-        {
-            files = Directory.GetFiles(t.Path, "*.mp3", Mp3s);
-        }
+        string[] files = target.TargetType is TargetType.Song
+            ? [target.Path]
+            : Directory.GetFiles(target.Path, "*.mp3", new EnumerationOptions() { RecurseSubdirectories = true, IgnoreInaccessible = true });
         return shuffle ? files.Shuffle().ToList() : InOrder(files);
     }
 
     // Album folder, then disc, then track number from the MP3 tags; file name as fallback
     static List<string> InOrder(IEnumerable<string> files) =>
-        files.Select(f =>
+        files.Select(file =>
         {
-            using var tag = TagLib.File.Create(f);
-            return (f, dir: Path.GetDirectoryName(f), disc: tag.Tag.Disc, track: tag.Tag.Track);
+            using var tag = TagLib.File.Create(file);
+            return (File: file, Directory: Path.GetDirectoryName(file), tag.Tag.Track);
         })
-        .OrderBy(x => x.dir).ThenBy(x => x.disc).ThenBy(x => x.track).ThenBy(x => x.f)
-        .Select(x => x.f).ToList();
+        .OrderBy(x => x.Directory).ThenBy(x => x.Track).ThenBy(x => x.File)
+        .Select(x => x.File)
+        .ToList();
 }
