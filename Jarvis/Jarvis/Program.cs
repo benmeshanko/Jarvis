@@ -4,6 +4,7 @@ var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddSingleton<LibraryService>();
 builder.Services.AddSingleton<MediaService>();
+builder.Services.AddSingleton<StatisticsService>();
 builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();

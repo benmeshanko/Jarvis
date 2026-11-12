@@ -7,7 +7,6 @@ namespace Jarvis.Services;
 /// <summary>
 /// Background service, orchestrates program functions.
 /// </summary>
-/// <param name="logger"></param>
 public class Worker(
     ILogger<Worker> logger,
     MediaService mediaService,
@@ -89,38 +88,24 @@ public class Worker(
         var action = words.Length > 0 ? Aliases.GetValueOrDefault(words[0]) : null;
         var target = words.Length > 1 ? words[1] : "";
 
-        switch (action)
+        if (action is "quit")
+            cts.Cancel();
+        else if (action is "skip")
+            mediaService.Skip();
+        else if (action is "pause" or "resume")
+            mediaService.PauseResume();
+        else if (action is "shuffle" && libraryService.Find(target) is Target shuffleTarget)
+            mediaService.PlayList(libraryService.Songs(shuffleTarget, true));
+        else if (action is "play" && libraryService.Find(target) is Target playTarget)
+            mediaService.PlayList(libraryService.Songs(playTarget, false));
+        else if (action is "replay")
+            mediaService.Replay();
+        else if (action is "volume")
         {
-            case "quit":
-                cts.Cancel();
-                break;
-            case "skip":
-                mediaService.Skip();
-                break;
-            case "pause":
-            case "resume":
-                mediaService.PauseResume();
-                break;
-            case "shuffle":
-                Target? musicTarget = libraryService.Find(target);
-                if (musicTarget is null) { logger.LogInformation("[Match] nothing close enough"); break; }
-                mediaService.PlayList(libraryService.Songs(musicTarget, true));
-                break;
-            case "play":
-                musicTarget = libraryService.Find(target);
-                if (musicTarget is null) { logger.LogInformation("[Match] nothing close enough"); break; }
-                mediaService.PlayList(libraryService.Songs(musicTarget, false));
-                break;
-            case "volume":
-                if (target == "up") mediaService.VolumeUpDown(true);
-                else if (target == "down") mediaService.VolumeUpDown(false);
-                else if (int.TryParse(target, out int volume)
-                    || Numbers.TryGetValue(target, out volume)) mediaService.Volume(volume);
-                break;
-            case "replay":
-                mediaService.Replay();
-                break;
+            if (target == "up") mediaService.VolumeUpDown(true);
+            else if (target == "down") mediaService.VolumeUpDown(false);
+            else if (int.TryParse(target, out int volume)
+                || Numbers.TryGetValue(target, out volume)) mediaService.Volume(volume);
         }
-        ;
     }
 }
