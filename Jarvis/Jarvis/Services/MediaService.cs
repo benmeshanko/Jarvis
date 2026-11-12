@@ -12,14 +12,16 @@ public class MediaService
     private int _volume = 6;
     private Queue<string> _queue = [];
     private bool _isSongActive = false;
+    private readonly StatisticsService _statisticsService;
+    private readonly ILogger<MediaService> _logger;
 
-    public MediaService()
+    public MediaService(StatisticsService statisticsService, ILogger<MediaService> logger)
     {
+        _statisticsService = statisticsService;
+        _logger = logger;
+
         Core.Initialize();
         _vlc = new();
-
-        _queue = new(GetSongFiles(@"C:\ben\music").Shuffle());
-        DequeuePlay();
     }
 
     private void DequeuePlay()
@@ -45,17 +47,8 @@ public class MediaService
         };
 
         _player.Play();
-        Console.WriteLine($"Playing {song}");
+        _logger.LogInformation($"Playing {song}");
         _isSongActive = true;
-    }
-
-    public static List<string> GetSongFiles(string baseDirectory)
-    {
-        return [.. Directory.GetFiles(baseDirectory, "*.mp3", new EnumerationOptions()
-        {
-            RecurseSubdirectories = true,
-            IgnoreInaccessible = true
-        })];
     }
 
     public void PlayList(IEnumerable<string> songs)
@@ -64,15 +57,9 @@ public class MediaService
         DequeuePlay();
     }
 
-    public void Skip()
-    {
-        DequeuePlay();
-    }
-
-    public void Replay()
-    {
-        _player?.Position = 0;
-    }
+    public void Skip() => DequeuePlay();
+    public void Replay() => _player?.Position = 0;
+    public void PauseResume() => _player?.Pause();
 
     public void Volume(int volume)
     {
@@ -91,6 +78,4 @@ public class MediaService
 
         _player?.Volume = _volume * 10;
     }
-
-    public void PauseResume() => _player?.Pause();
 }
