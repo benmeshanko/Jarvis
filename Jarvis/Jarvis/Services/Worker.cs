@@ -67,7 +67,7 @@ public class Worker(
 
     static readonly Dictionary<string, int> Numbers = "zero one two three four five six seven eight nine ten"
         .Split(' ')
-        .Select((string s, int i) => (Key: s, Value: i))
+        .Select((key, value) => (Key: key, Value: value))
         .ToDictionary(x => x.Key, x => x.Value);
 
     void Handle(string command, CancellationTokenSource cts)
