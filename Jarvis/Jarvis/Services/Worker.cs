@@ -7,7 +7,7 @@ namespace Jarvis.Services;
 /// <summary>
 /// Background service, orchestrates program functions.
 /// </summary>
-public class Worker(
+public partial class Worker(
     ILogger<Worker> logger,
     MediaService mediaService,
     LibraryService libraryService) : BackgroundService
@@ -54,9 +54,11 @@ public class Worker(
         ["skip"] = "skip",
         ["pause"] = "pause",
         ["paws"] = "pause",
-        ["resume"] = "resume",
-        ["re-zoom"] = "resume",
-        ["for zoom"] = "resume",
+        ["stop"] = "pause",
+        ["continue"] = "pause",
+        ["resume"] = "pause",
+        ["re-zoom"] = "pause",
+        ["for zoom"] = "pause",
         ["shuffle"] = "shuffle",
         ["play"] = "play",
         ["plays"] = "play",
@@ -72,8 +74,8 @@ public class Worker(
 
     void Handle(string command, CancellationTokenSource cts)
     {
-        logger.LogInformation($"[Command] {command}");
-        command = Regex.Replace(command, @"[^\w\s']", " ").Trim();
+        logger.LogInformation("Raw Command: [{c}]", command);
+        command = CommandRegex.Replace(command, " ").Trim();
         var words = command.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
         var action = words.Length > 0 ? Aliases.GetValueOrDefault(words[0]) : null;
         var target = words.Length > 1 ? words[1] : "";
@@ -82,8 +84,8 @@ public class Worker(
             cts.Cancel();
         else if (action is "skip")
             mediaService.Skip();
-        else if (action is "pause" or "resume")
-            mediaService.PauseResume();
+        else if (action is "pause")
+            mediaService.Pause();
         else if (action is "shuffle" && libraryService.Find(target) is Target shuffleTarget)
             mediaService.PlayList(libraryService.Songs(shuffleTarget, true));
         else if (action is "play" && libraryService.Find(target) is Target playTarget)
@@ -98,4 +100,7 @@ public class Worker(
                 || Numbers.TryGetValue(target, out volume)) mediaService.Volume(volume);
         }
     }
+
+    [GeneratedRegex(@"[^\w\s']")]
+    private static partial Regex CommandRegex { get; }
 }

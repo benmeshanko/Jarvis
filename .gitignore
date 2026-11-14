@@ -226,3 +226,6 @@ AppPackages/
 #####
 
 ggml-*.bin
+*.db
+*.db-shm
+*.db-wal

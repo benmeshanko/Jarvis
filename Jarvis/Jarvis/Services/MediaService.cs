@@ -48,6 +48,7 @@ public class MediaService
 
         _player.Play();
         _logger.LogInformation($"Playing {song}");
+        _ = Task.Run(() => _statisticsService.RecordSongAsync(song));
         _isSongActive = true;
     }
 
@@ -59,7 +60,7 @@ public class MediaService
 
     public void Skip() => DequeuePlay();
     public void Replay() => _player?.Position = 0;
-    public void PauseResume() => _player?.Pause();
+    public void Pause() => _player?.Pause();
 
     public void Volume(int volume)
     {
